@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Beat Up Your Boyfriend</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: #f4f4f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    h1 {
+      font-family: 'Anton', sans-serif;
+      font-size: 4em;
+      color: #ff6347; /* Tomato red color */
+      text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.6);
+      animation: bounce 1s infinite alternate;
+      margin-bottom: 20px;
+    }
+    
+    @keyframes bounce {
+      0% {
+        transform: translateY(0);
+      }
+      100% {
+        transform: translateY(-20px);
+      }
+    }
+
+    canvas {
+      background: #e0e0e0;
+      border: 2px solid #333;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .health-bar {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 200px;
+      height: 20px;
+      background: #ccc;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    }
+    .health-bar .damage {
+      height: 100%;
+      border-radius: 10px;
+      background: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Beat Up Your Boyfriend</h1>
+  <canvas id="gameCanvas" width="400" height="600"></canvas>
+  <div class="health-bar">
+    <div class="damage" id="damageBar"></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let health = 100; // Maximum health
+    const damageBar = document.getElementById('damageBar');
+    let screenFlash = false; // To control the red flash effect
+    let showOuch = false; // Control the display of the random phrases
+    let ouchTimeout; // Timeout variable for hiding the phrase after a while
+    let randomPhrase = ''; // To store the current random phrase
+
+    // Load the images for the faces
+    const face1 = new Image();
+    const face2 = new Image();
+    const face3 = new Image();
+    face1.src = 'face1.png'; // Replace with the actual path to face 1
+    face2.src = 'face2.png'; // Replace with the actual path to face 2
+    face3.src = 'face3.png'; // Replace with the actual path to face 3
+
+    // Load sound effects
+    const attackSound = new Audio('attack-sound.mp3'); // Path to attack sound
+    const lowHealthSound = new Audio('low-health-sound.mp3'); // Path to low health sound
+
+    // Stick figure structure
+    const stickFigure = {
+      x: canvas.width / 2,
+      y: 150,
+      headRadius: 30,
+      bodyLength: 100,
+      armLength: 60,
+      legLength: 80,
+      bruises: {
+        head: false,
+        body: false,
+        armLeft: false,
+        armRight: false,
+        legLeft: false,
+        legRight: false
+      }
+    };
+
+    // Face control variables
+    let currentFace = face1; // Initial face
+
+    // Function to draw the stick figure
+    function drawStickFigure() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const { x, y, headRadius, bodyLength, armLength, legLength, bruises } = stickFigure;
+
+      // Update health bar
+      const damagePercentage = (health / 100) * 100;
+      damageBar.style.width = `${damagePercentage}%`;
+
+      // Draw the red overlay effect when the stick figure is hit
+      if (screenFlash) {
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      // Draw the current face
+      ctx.drawImage(currentFace, x - headRadius, y - headRadius, headRadius * 2, headRadius * 2);
+
+      // Body (damage effect)
+      ctx.beginPath();
+      ctx.moveTo(x, y + headRadius);
+      ctx.lineTo(x, y + headRadius + bodyLength);
+      ctx.strokeStyle = bruises.body ? '#8B0000' : '#000';
+      ctx.lineWidth = bruises.body ? 6 : 3;
+      ctx.stroke();
+
+      // Arms
+      ctx.beginPath();
+      ctx.moveTo(x, y + headRadius + 30);
+      ctx.lineTo(x - armLength, y + headRadius + 60);
+      ctx.moveTo(x, y + headRadius + 30);
+      ctx.lineTo(x + armLength, y + headRadius + 60);
+      ctx.strokeStyle = bruises.armLeft || bruises.armRight ? 'green' : '#000';
+      ctx.stroke();
+
+      // Legs
+      ctx.beginPath();
+      ctx.moveTo(x, y + headRadius + bodyLength);
+      ctx.lineTo(x - 30, y + headRadius + bodyLength + legLength);
+      ctx.moveTo(x, y + headRadius + bodyLength);
+      ctx.lineTo(x + 30, y + headRadius + bodyLength + legLength);
+      ctx.strokeStyle = bruises.legLeft || bruises.legRight ? 'blue' : '#000';
+      ctx.stroke();
+
+      // Draw random phrase when triggered
+      if (showOuch) {
+        ctx.font = '30px Arial';
+        ctx.fillStyle = 'red';
+        ctx.fillText(randomPhrase, x - 50, y - 50);
+      }
+    }
+
+    // Attack on the stick figure
+    function attackStickFigure(event) {
+      // Apply damage
+      health -= 10; // Fixed damage for simplicity
+
+      attackSound.play();
+      // Trigger random bruises
+      if (Math.random() > 0.5) stickFigure.bruises.head = true;
+      if (Math.random() > 0.5) stickFigure.bruises.body = true;
+      if (Math.random() > 0.5) stickFigure.bruises.armLeft = true;
+      if (Math.random() > 0.5) stickFigure.bruises.armRight = true;
+      if (Math.random() > 0.5) stickFigure.bruises.legLeft = true;
+      if (Math.random() > 0.5) stickFigure.bruises.legRight = true;
+
+      // Change face based on health
+      if (health <= 20) {
+        currentFace = face3; // Show face3 when health is low
+        lowHealthSound.play(); // Play low health sound when health is below 20
+      } else {
+        currentFace = face2; // Temporarily show face2 when attacked
+        setTimeout(() => {
+          if (health > 20) {
+            currentFace = face1; // Revert to face1 if health goes back above 20
+          }
+        }, 500); // Reset to face1 after a brief delay
+      }
+
+      // Flash red screen effect when hit
+      screenFlash = true;
+      setTimeout(() => {
+        screenFlash = false; // Reset the flash after a brief period
+      }, 200); // Flash duration (200ms)
+
+      // Randomly choose a phrase to show
+      const phrases = ["Ouch!", "I'm sorry!", "That hurts!"];
+      randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+
+      // Show random phrase
+      showOuch = true;
+      clearTimeout(ouchTimeout); // Clear any previous timeout
+      ouchTimeout = setTimeout(() => {
+        showOuch = false; // Hide the phrase after a short time
+      }, 500); // Display for 500ms
+    }
+
+    // Listen for clicks on the stick figure
+    canvas.addEventListener('click', (event) => {
+      const xPos = event.offsetX;
+      const yPos = event.offsetY;
+
+      // Check if the click is within the stick figure's bounds
+      const dist = Math.sqrt((xPos - stickFigure.x) ** 2 + (yPos - stickFigure.y) ** 2);
+      if (dist < stickFigure.headRadius + stickFigure.bodyLength) {
+        attackStickFigure(event);
+      }
+    });
+
+    // Draw the stick figure at regular intervals
+    setInterval(drawStickFigure, 100);
+  </script>
+</body>
+</html>
